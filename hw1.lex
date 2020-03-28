@@ -25,7 +25,7 @@ logop           ((&&)|(||))
 binop           ([%-+*/])
 
 %%
-"Int"|"UInt"|"Double"|"Float"|"Bool"|"String"|"Character"	showToken("TYPE");
+"Int"|"UInt"|"Double"|"Float"|"Bool"|"String"|"Character" showToken("TYPE");
 "var"                                                     showToken("VAR");
 "let"                                                showToken("LET");
 "func"                                               showToken("FUNC");
@@ -49,16 +49,15 @@ binop           ([%-+*/])
 {binop}                                              showToken("BINOP");
 "true"                                               showToken("TRUE");
 "false"                                              showToken("FALSE");
-"->"	                                               showToken("ARROW");
-":"	                                                 showToken("COLON");
-
+"->"	                                             showToken("ARROW");
+":"	                                             showToken("COLON");
 {{letter}[a-zA-Z0-9]*|_[a-zA-Z0-9]+}                 showToken("ID");
-{0b{bin}+}	                                         showToken("BIN_INT");
-{0o{oct}+}	                                         showToken("OCT_INT");
-{digit}+	                                           showToken("DEC_INT");
-{0x{hex}+}	                                         showToken("HEX_INT");
-{real}|{real}{expo}{digit}	                         showToken("DEC_REAL");
-{0x{hex}+{fp}{digit}}	                               showToken("HEX_FP");
+{0b{bin}+}	                                     showToken("BIN_INT");
+{0o{oct}+}	                                     showToken("OCT_INT");
+{digit}+	                                     showToken("DEC_INT");
+{0x{hex}+}	                                     showToken("HEX_INT");
+{real}|{real}{expo}{digit}	                     showToken("DEC_REAL");
+{0x{hex}+{fp}{digit}}	                             showToken("HEX_FP");
 "\/\*"[^"\/\*"]"\/\*"                                showToken("COMMENT");
 "\/\/"[^\n\r]*                                       showToken("COMMENT");
 \"(\\.|[^\"\n\r])*\"                                 showToken("STRING");
