@@ -1,5 +1,5 @@
 %{
-/* Declarations section */ 
+/* Declarations section */
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -11,11 +11,11 @@ void showToken(const char * name);
 %option yylineno
 %option noyywrap
 
-digit [0-9]
-letter [a-zA-Z]
-bin [0-1]
-oct [0-7]
-hex [a-f0-9]
+digit ([0-9])
+letter ([a-zA-Z])
+bin ([0-1])
+oct ([0-7])
+hex ([a-f0-9])
 real {digit}\.{digit}*|{digit}*\.{digit}
 expo {e-|e+|E-|E+}
 fp {p-|p+|P-|P+}
