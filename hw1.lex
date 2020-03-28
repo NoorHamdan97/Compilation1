@@ -22,7 +22,7 @@ fp              ({p-|p+|P-|P+})
 whitespace      ([\r\t\n ])
 binop           ([%+*/-])
 prtch           ([!-~])
-
+string  \"[^\n"]+\"
 %%
 Int | UInt |Double|Float|Bool|String|Character showToken("TYPE");
 var                                                     showToken("VAR");
