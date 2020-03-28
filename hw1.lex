@@ -31,14 +31,10 @@ binop           ([%-+*/])
 "func"                                               showToken("FUNC");
 "import"                                             showToken("IMPORT");
 "nil"                                                showToken ("NIL");
-"true"                                               showToken("TRUE");
-"false"                                              showToken("FALSE");
-"->"	                                               showToken("ARROW");
-":"	                                                 showToken("COLON");
-"return"                                             showToken("RETURN");
+"while"                                              showToken("WHILE");
 "if"                                                 showToken("IF");
 "else"                                               showToken("ELSE");
-"while"                                              showToken("WHILE");
+"return"                                             showToken("RETURN");
 ";"                                                  showToken("SC");
 ","                                                  showToken("COMMA");
 "("                                                  showToken("LPAREN");
@@ -51,18 +47,23 @@ binop           ([%-+*/])
 {relop}                                              showToken("RELOP");
 {logop}                                              showToken("LOGOP");
 {binop}                                              showToken("BINOP");
+"true"                                               showToken("TRUE");
+"false"                                              showToken("FALSE");
+"->"	                                               showToken("ARROW");
+":"	                                                 showToken("COLON");
+
 {{letter}[a-zA-Z0-9]*|_[a-zA-Z0-9]+}                 showToken("ID");
 {0b{bin}+}	                                         showToken("BIN_INT");
 {0o{oct}+}	                                         showToken("OCT_INT");
-{digit}	                                             showToken("DEC_INT");
+{digit}+	                                           showToken("DEC_INT");
 {0x{hex}+}	                                         showToken("HEX_INT");
 {real}|{real}{expo}{digit}	                         showToken("DEC_REAL");
 {0x{hex}+{fp}{digit}}	                               showToken("HEX_FP");
 "\/\*"[^"\/\*"]"\/\*"                                showToken("COMMENT");
 "\/\/"[^\n\r]*                                       showToken("COMMENT");
-\"(\\.|[^\"\n\r])*\" return                          showToken("STRING");
+\"(\\.|[^\"\n\r])*\"                                 showToken("STRING");
 {whitespace}                                         ;
-.                             printf("Error %s\n",yytext);exit(0);
+.  printf("Error %s\n",yytext);exit(0);
 %%
 
 void showToken(const char * name){
