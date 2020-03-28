@@ -20,7 +20,6 @@ real            ({digit}+\.{digit}*|{digit}*\.{digit}+)
 expo            ({e-|e+|E-|E+})
 fp              ({p-|p+|P-|P+})
 whitespace      ([\r\t\n ])
-relop           ((==)|(!=)|(<=)|(>=)|(<)|(>)) //// i dont think its right
 binop           ([%+*/-])
 prtch           ([!-~])
 
@@ -44,7 +43,12 @@ return                                             showToken("RETURN");
 "["                                                  showToken("LBRACKET");
 "]"                                                  showToken("RBRACKET");
 "="                                                  showToken("ASSIGN");
-{relop}                                              showToken("RELOP");
+"=="                                              showToken("RELOP");
+"!="                                              showToken("RELOP");
+">"                                              showToken("RELOP");
+"<"                                              showToken("RELOP");
+"<="                                              showToken("RELOP");
+">="                                              showToken("RELOP");
 "\&\&"                                               showToken("LOGOP");
 "\|\|"                                               showToken("LOGOP");
 {binop}                                              showToken("BINOP");
