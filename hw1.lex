@@ -21,9 +21,9 @@ expo            ({e-|e+|E-|E+})
 fp              ({p-|p+|P-|P+})
 whitespace      ([\r\t\n ])
 relop           ((==)|(!=)|(<=)|(>=)|(<)|(>))
-logop           ((&&)|(||))
+logop           ({&& | ||})
 binop           ([%-+*/])
-
+pc              ([0x09])
 %%
 "Int"|"UInt"|"Double"|"Float"|"Bool"|"String"|"Character" showToken("TYPE");
 "var"                                                     showToken("VAR");
