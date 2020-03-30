@@ -1,0 +1,77 @@
+%{
+/* Declarations section */ 
+#include <stdio.h>
+#include <stdlib.h>
+int showToken(const char * name);
+%}
+
+%option yylineno
+%option noyywrap
+
+digit [0-9]
+expo [eE]
+fp [pP]
+letter [a-zA-Z]
+bin [0-1]
+oct [0-7]
+hex [{letter}[0-9]]
+real {digit}\.{digit}*|{digit}*\.{digit}
+whitespace [\r\t\n ]
+relop ((==)|(!=)|(<=)|(>=)|(<)|(>))
+logop [(&&)(||)]
+binop [%+*/-]
+one_line_cmt (\/\/)
+%%
+
+
+
+"Int"|"UInt"|"Double"|"Float"|"Bool"|"String"|"Character"	return showToken("TYPE");
+"var" return showToken("VAR");
+"let" return showToken("LET");
+"func" return showToken("FUNC");
+"import" 	 return showToken("IMPORT");
+"nil" return showToken("NIL");
+"true" return showToken("TRUE");
+"false" return showToken("FALSE");
+"->"	return showToken("ARROW");
+":"	return showToken("COLON");
+"return" return showToken("RETURN");
+"if" return showToken("IF");
+"else" return showToken("ELSE");
+"while" return showToken("WHILE");
+";" return showToken("SC");
+"," return showToken("COMMA");
+"(" return showToken("LPAREN");
+")" return showToken("RPAREN");
+"{" return showToken("LBRACE");
+"}" return showToken("RBRACE");
+"[" return showToken("LBRACKET");
+"]" return showToken("RBRACKET");
+"=" return showToken("ASSIGN");
+{relop} return showToken("RELOP");
+{logop} return showToken("LOGOP");
+{binop} return showToken("BINOP");
+{real}	return showToken("DEC_REAL");
+{real}{expo}["+""-"]{digit}	return showToken("DEC_REAL");
+"0x"{hex}+{fp}["+""-"]{digit}	return showToken("HEX_FP");
+"0b"["0""1"]+	return showToken("BIN_INT");
+"0o"{oct}+	return showToken("OCT_INT");
+"0x"{hex}+	return showToken("HEX_INT");
+{digit}	return showToken("DEC_INT");
+{letter}[a-zA-Z0-9]*	return showToken("ID");
+"_"[a-zA-Z0-9]+ return showToken("ID");
+
+{one_line_cmt}[^\n\r]* return showToken("COMMENT");
+(\/\*)[^(\/\*)]*(\*\/) return showToken("COMMENT");
+
+
+\"(\\.|[^\"\n\r])*\" return showToken("STRING");
+
+{whitespace} ;
+. printf("Error %s\n",yytext);exit(0);
+%%
+
+int showToken(const char * name){
+	printf("%d %s %s\n",yylineno,name,yytext);
+	return 1;
+}
