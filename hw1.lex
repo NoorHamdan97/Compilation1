@@ -5,16 +5,13 @@
 #include <stdlib.h>
 
 int showToken(const char * name);
-int hexToDec(const char* hex);
-int binToDec(const char* bin);
-int octToDec(const char* oct);
-int power(int a, int b);
-int commentToNum(const char* cmt);
+void remove_leading_zeros();
 int line_num = 1;
-#define MAX_LEN 1024
+int i;
+#define MAX_LEN 1026
 char string_buf[MAX_LEN];
 char *string_buf_ptr;
-int undefined=0;
+int undefined = 0;
 
 %} 
 
@@ -24,16 +21,20 @@ int undefined=0;
 %x STR
 
 digit [0-9]
-real {digit}\.{digit}*|{digit}*\.{digit}
+real ("."{digit}+|{digit}+"."{digit}*)
 letter [a-zA-Z]
-whitespace [\r\t\n ]
 relop ((==)|(!=)|(<=)|(>=)|(<)|(>))
-logop [(&&)(||)]
+logop (\&\&|\|\|)
 binop [%+*/-]
-printable ([\x20-\x7E]|{whitespace})
+cmt_printable [\x20-\x29\x2B-\x7E \t]
+cmt_no_slash [\x20-\x29\x2B-\x2E\x30-\x7E \t]
+whitespace [\r\t\n ]
+unp1 [\x00-\x08]
+unp2 [\x0b-\x0c]
+unp3 [\x0e-\x1F]
+unp4 [\x7f]
 
 %%
-
 
 
 "Int"|"UInt"|"Double"|"Float"|"Bool"|"String"|"Character"	return showToken("TYPE");
@@ -61,79 +62,110 @@ printable ([\x20-\x7E]|{whitespace})
 "=" return showToken("ASSIGN");
 {relop} return showToken("RELOP");
 {logop} return showToken("LOGOP");
+{real}[Ee](("+")|("-")){digit}+	return showToken("DEC_REAL");
+"0x"[a-fA-F0-7]+[Pp](("+")|("-")){digit}+	   return showToken("HEX_FP");
 {binop} return showToken("BINOP");
 {real}	return showToken("DEC_REAL");
-{real}[Ee]["+""-"]{digit}	return showToken("DEC_REAL");
-"0x"[a-zA-Z0-9]+[Pp]["+""-"][0-9]   return showToken("HEX_FP");
-"0b"[0-1]+	 {sprintf(yytext, "%d", binToDec(yytext+2));return showToken("BIN_INT");}
-"0o"[0-7]+	 {sprintf(yytext, "%d", octToDec(yytext+2));return showToken("OCT_INT");}
-"0x"[a-zA-Z0-9]+	{sprintf(yytext, "%d", hexToDec(yytext+2));return showToken("HEX_INT");}
-{digit}+	return showToken("DEC_INT");
+"0b"[0-1]+	 {sprintf(yytext, "%d", strtol(yytext+2, NULL, 2));return showToken("BIN_INT");}
+"0o"[0-7]+	 {sprintf(yytext, "%d",strtol(yytext+2, NULL, 8));return showToken("OCT_INT");}
+"0x"[a-fA-F0-7]+	{sprintf(yytext, "%d", strtol(yytext+2, NULL, 16));return showToken("HEX_INT");}
+[0]|[1-9][0-9]*		return showToken("DEC_INT");
+[0]+[1-9][0-9]*		{remove_leading_zeros();return showToken("DEC_INT");}
+
 {letter}[a-zA-Z0-9]*	return showToken("ID");
 "_"[a-zA-Z0-9]+ return showToken("ID");
 
 "/*"         BEGIN(comment);
-<comment><<EOF>> {printf("Error unclosed comment\n");exit(0);}
-<comment>[^*(\n|\r)]*"/*" 	{printf("Warning nested comment\n");exit(0);}
-<comment>[^*(\n|\r)]*
-<comment>[^*(\n|\r)]*(\n|\r)      ++line_num;
-<comment>"*"+[^*/\n]*
-<comment>"*"+[^*[/\n/\r]]*(\n|\r) ++line_num;
-<comment>"*"+"/"        {sprintf(yytext, "%d", line_num);showToken("COMMENT");BEGIN(INITIAL);}
+<comment>{
+	<<EOF>> 		{printf("Error unclosed comment\n");exit(0);}
+	{cmt_printable}*"/*"	{printf("Warning nested comment\n");exit(0);}
+	{cmt_printable}*[\r\n]		   ++line_num;
+	{cmt_printable}*  	      ;
+	"*"+{cmt_no_slash}*   ;
+	"*"+{cmt_no_slash}*[\n\r]	 ++line_num;
+	"*"+"/"         {sprintf(yytext, "%d", line_num);line_num=1;showToken("COMMENT");BEGIN(INITIAL);}
+	
+   {unp1}  {printf("Error %c\n",yytext[0]);exit(0);}
+   {unp2}  {printf("Error %c\n",yytext[0]);exit(0);}
+   {unp3}  {printf("Error %c\n",yytext[0]);exit(0);}
+   {unp4}  {printf("Error %c\n",yytext[0]);exit(0);}
+}
+"//"[\x20-\x7e \t]* {yytext="1";return showToken("COMMENT");}
 
-\/\/[^(\n\r|\n|\r)]* {yytext="1";return showToken("COMMENT");}
-
-\" string_buf_ptr = string_buf; BEGIN(STR); 
-<STR>\"    								{ 
-                                            BEGIN(INITIAL);
+\" 										{string_buf_ptr = string_buf; BEGIN(STR); }
+<STR>{
+	<<EOF>>								{BEGIN(INITIAL); printf("Error unclosed string\n");exit(0);}		
+	\"    								{ 
+										BEGIN(INITIAL);
 											yytext = string_buf;
-											if(undefined) 
-												return showError("undefined escape sequence ",yytext);
-											if(!undefined){
-												*string_buf_ptr = '\0';
-												return showToken("STRING");
-											}
+											*string_buf_ptr = '\0';
+											if (strlen(string_buf_ptr)+1>= MAX_LEN){printf("Error unclosed string\n");exit(0);}
+											return showToken("STRING");
 										}
-<STR><<EOF>>								{BEGIN(INITIAL); return showError("unclosed string","");}		
-<STR>{printable}*[^\"][\n\r]				{BEGIN(INITIAL); return showError("unclosed string","");}
-<STR>\\/((\")$)							    {BEGIN(INITIAL); return showError("unclosed string","");}
-<STR>\\u[0-7][0-9a-fA-F]     				if(!undefined){                                               
+									
+	 
+	\\u"{"[0]{0,5}[0-9a-fA-F]"}"     {                                               
 												/* hex escape sequence */
 													int result;
-													(void) sscanf(yytext + 2, "%x", &result );
+													int len = strlen(yytext)+1;
+													char text[len-4];
+													
+													for(i=0;i<len-5;i++){
+														text[i]= yytext[i+3];
+														if (i+1>=len-5)
+															text[i+1]='\0';
+													}
+													(void) sscanf(text , "%x", &result );
 													*string_buf_ptr++ = result;
 											}
-<STR>\\u[0-9a-zA-Z]/[\"]?			    	if(!undefined){	
-												for(int i =1 ; i<= 2 ; i++ )
-													string_buf[i-1] = yytext[i];
-												string_buf[2] = '\0';												
-												undefined=1;
+	
+	\\u"{"[0]{0,4}[0-7][0-9a-fA-F]"}"     {                                               
+												/* hex escape sequence */
+													int result;
+													int len = strlen(yytext)+1;
+													char text[len-4];
+													
+													for(i=0;i<len-5;i++){
+														text[i]= yytext[i+3];
+														if (i+1>=len-5)
+															text[i+1]='\0';
+													}
+													(void) sscanf(text , "%x", &result );
+													*string_buf_ptr++ = result;
 											}
-<STR>\\u[0-9a-zA-Z][^0-9a-zA-Z\"]			if(!undefined){	
-												for(int i =1 ; i<= 2 ; i++ )
-													string_buf[i-1] = yytext[i];
-												string_buf[2] = '\0';													
-												undefined=1;
+	
+	\\u"{"[0-9a-zA-Z]{0,6}"}"			{	
+											printf("Error undefined escape sequence %c\n",yytext[1]);
+											exit(0);
+										}
+
+	
+	\\n 									{*string_buf_ptr++ = '\n';}
+	\\t										{*string_buf_ptr++ = '\t';}
+	\\r 									{*string_buf_ptr++ = '\r';}
+	\\\\ 									    {*string_buf_ptr++ = '\\';}
+	\\0  									{*string_buf_ptr++ = '\0';}
+	\\\"			  						    {*string_buf_ptr++ = '\"';}
+	\\(.|\n|\r)										{
+												printf("Error undefined escape sequence %c\n",yytext[1]);
+												exit(0);
 											}
-<STR>\\u[0-9a-zA-Z]{2}					    if(!undefined){	
-												for(int i =1 ; i<= 3 ; i++ )
-													string_buf[i-1] = yytext[i];
-												string_buf[3] = '\0';
-												undefined=1;
-											}
-<STR>\\n 									if(!undefined){*string_buf_ptr++ = '\n';}
-<STR>\\t									if(!undefined){*string_buf_ptr++ = '\t';}
-<STR>\\r 									if(!undefined){*string_buf_ptr++ = '\r';}
-<STR>(\\)(\0)  								if(!undefined){*string_buf_ptr++ = '\0';}
-<STR>(\\)(\\) 								if(!undefined){*string_buf_ptr++ = '\\';}
-<STR>\\({printable})						if(!undefined){
-													string_buf[0] = yytext[1] ;
-													string_buf[1] = '\0';
-													undefined = 1; 
-											}
-<STR>.										if(!undefined) {*string_buf_ptr++ = *yytext;} 
 
 
+   
+   {unp1}  {printf("Error %c\n",yytext[0]);exit(0);}
+   {unp2}  {printf("Error %c\n",yytext[0]);exit(0);}
+   {unp3}  {printf("Error %c\n",yytext[0]);exit(0);}
+   {unp4}  {printf("Error %c\n",yytext[0]);exit(0);}
+	
+	[^\r\n\"]{0,1023}[\n\r] {;printf("Error unclosed string\n");exit(0);}
+	.										{
+												if(undefined) {printf("Error undefined escape sequence %c\n",yytext[1]);exit(0);}
+												*string_buf_ptr++ = *yytext;
+											}
+	
+
+}
 {whitespace} ;
 . printf("Error %s\n",yytext);exit(0);
 %%
@@ -143,63 +175,9 @@ int showToken(const char* name){
 	return 1;
 }
 
-void showError(const char * error_name,const char * error )
-{
-	cout << "Error " << error_name << error << endl;
-	exit(0);
-}
-
-int hexToDec(const char* hex){
-	int i  = strlen(hex)-1;
-	int val =0, decimal = 0;
-    for(; i>=0; --i) {
-        if(hex[i]>='0' && hex[i]<='9')
-            val = hex[i] - '0';
-        else if(hex[i]>='a' && hex[i]<='f')
-            val = hex[i] - 'a'+10;
-        else if(hex[i]>='A' && hex[i]<='F')
-            val = hex[i] - 'A' + 10;
-
-        decimal += (val * power(16, i));
-    }	
-	return decimal;
-}
-
-int binToDec(const char* bin){
-    int decimal = 0,base = 1; 
-	int i = strlen(bin)- 1;
-    for ( ;i >= 0; i--) { 
-        if (bin[i] == '1') 
-            decimal += base; 
-        base = base * 2; 
-    } 
-    return decimal; 
-}
-
-int octToDec(const char* oct){ /// might need changing
-	int i  = strlen(oct)-1;
-	int decimal = 0,val=0; 
-    for ( ;i >= 0; --i) {
-		if(oct[i]>='0' && oct[i]<='7')
-			val = oct[i]-'0'; 
-		 
-		 decimal += val*power(8,i);
-	}
-	return decimal;
-}
-
-int power(int a, int b){
-	int i=0,res=1;
-	for(;i<b;++i)
-		res*=a;
-return res;
-}
-
-int commentToNum(const char* cmt){
-	int count=1;
-	while(cmt){
-		if(*cmt=='\r'||*cmt=='\n')
-			count++;
-	}
-return count;
+void remove_leading_zeros(){
+	int i=0;
+	while(yytext[i]=='0')
+		++i;
+	yytext = yytext+i;
 }
